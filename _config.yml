@@ -8,7 +8,7 @@ language: zh-CN
 timezone: 'Asia/Shanghai'
 
 # URL
-url: https://fred.github.io
+url: https://lucisl.github.io
 permalink: :year/:month/:day/:title/
 permalink_defaults:
 pretty_urls:
