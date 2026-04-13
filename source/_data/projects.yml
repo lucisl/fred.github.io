@@ -1,0 +1,60 @@
+projects:
+  - name: 高并发交易系统
+    desc: 面向C端的核心交易链路，支撑大促场景下的瞬时流量洪峰
+    tech:
+      - Java
+      - Redis
+      - Kafka
+      - Spring Cloud
+    highlights:
+      - QPS 从 3000 提升至 50000+
+      - 接口 P99 从 800ms 降至 120ms
+      - 大促零故障
+    link: https://github.com/fred/trading-system
+    demo: 
+    status: completed
+  
+  - name: 微服务网关平台
+    desc: 统一的 API 网关服务，负责鉴权、限流、路由与监控
+    tech:
+      - Go
+      - Netty
+      - Nacos
+      - Prometheus
+    highlights:
+      - 网关吞吐提升 40%
+      - 支持 JWT + OAuth2 双模认证
+      - 实时监控 500+ 指标
+    link: https://github.com/fred/api-gateway
+    demo: 
+    status: completed
+  
+  - name: 智能数据同步引擎
+    desc: 跨数据库、跨数据源的实时同步系统，基于 CDC 技术实现
+    tech:
+      - Java
+      - Canal
+      - Elasticsearch
+      - Flink
+    highlights:
+      - MySQL → ES 实时同步
+      - 数据一致性 99.99%
+      - 支持百万级 TPS
+    link: https://github.com/fred/data-sync
+    demo: 
+    status: completed
+  
+  - name: DevOps 自动化平台
+    desc: 内部 CI/CD 与运维管理平台，提升研发效率
+    tech:
+      - Python
+      - Docker
+      - Kubernetes
+      - ArgoCD
+    highlights:
+      - 发布耗时从 40 分钟降至 8 分钟
+      - 生产变更风险降低 70%
+      - 自动化覆盖 200+ 运维任务
+    link: https://github.com/fred/devops-platform
+    demo: 
+    status: in-progress

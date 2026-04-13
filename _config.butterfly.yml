@@ -1,0 +1,74 @@
+# Theme Configuration for Butterfly
+
+# Navigation
+menu:
+  Home: / || fa fa-home
+  Blog: /archives/ || fa fa-archive
+  Projects: /projects/ || fa fa-folder-open
+  Snippets: /snippets/ || fa fa-code
+  About: /about/ || fa fa-user
+
+# Code highlight
+highlight_theme: dark
+
+# Theme style
+theme_style: dark
+
+# Font
+font:
+  global-font-size: 14px
+  code-font-size: 13px
+
+# Footer
+footer:
+  owner:
+    enable: true
+    since: 2026
+  custom_text: 'Built with Hexo and Butterfly'
+
+# Social links
+social:
+  github: https://github.com/fred
+  email: mailto:your@email.com
+
+# Post settings
+post:
+  meta:
+    author: true
+    date: true
+    categories: true
+    tags: true
+  toc:
+    enable: true
+    number: true
+
+# Archives
+archive:
+  enable: true
+  type: month
+
+# Search
+search:
+  enable: true
+  type: local
+  placeholder: Search articles
+
+# Comments (optional - using Giscus)
+comments:
+  enable: false
+
+# CDN optimization
+cdn:
+  enable: false
+
+# Lazy loading
+lazyload:
+  enable: true
+
+# PWA support
+pwa:
+  enable: false
+
+# Performance optimization
+optimize:
+  enable: true

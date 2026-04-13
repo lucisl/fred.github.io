@@ -1,0 +1,84 @@
+snippets:
+  - title: Java - 分布式锁实现
+    category: Java
+    description: 基于 Redis 的分布式锁实现示例
+    code: |
+      public class RedisDistributedLock {
+          private final RedisTemplate<String, String> redisTemplate;
+          
+          public boolean tryLock(String key, String value, long expireTime) {
+              return redisTemplate.opsForValue()
+                  .setIfAbsent(key, value, expireTime, TimeUnit.SECONDS);
+          }
+          
+          public void unlock(String key, String value) {
+              String script = "if redis.call('get', KEYS[1]) == ARGV[1] " +
+                              "then return redis.call('del', KEYS[1]) " +
+                              "else return 0 end";
+              redisTemplate.execute(
+                  new DefaultRedisScript<>(script, Long.class),
+                  Collections.singletonList(key),
+                  value
+              );
+          }
+      }
+  
+  - title: Go - 并发控制模式
+    category: Go
+    description: 使用 channel 控制并发任务
+    code: |
+      func concurrentWorker(tasks []Task, maxWorkers int) {
+          sem := make(chan struct{}, maxWorkers)
+          var wg sync.WaitGroup
+          
+          for _, task := range tasks {
+              wg.Add(1)
+              sem <- struct{}{}
+              
+              go func(t Task) {
+                  defer wg.Done()
+                  defer func() { <-sem }()
+                  
+                  processTask(t)
+              }(task)
+          }
+          
+          wg.Wait()
+      }
+  
+  - title: Python - 数据处理管道
+    category: Python
+    description: 使用生成器实现数据处理管道
+    code: |
+      def data_pipeline(source):
+          """数据处理管道示例"""
+          # Step 1: 读取数据
+          for item in read_data(source):
+              # Step 2: 过滤无效数据
+              if validate(item):
+                  # Step 3: 转换格式
+                  transformed = transform(item)
+                  # Step 4: 输出结果
+                  yield transformed
+      
+      def process_data(source):
+          pipeline = data_pipeline(source)
+          for data in pipeline:
+              save_to_database(data)
+  
+  - title: Redis - 缓存穿透防护
+    category: Redis
+    description: 使用布隆过滤器防止缓存穿透
+    code: |
+      # Redis Bloom Filter 使用示例
+      # 1. 初始化布隆过滤器
+      BF.ADD user_ids:filter user123
+      BF.ADD user_ids:filter user456
+      
+      # 2. 检查用户是否存在
+      BF.EXISTS user_ids:filter user123  # 返回 1
+      BF.EXISTS user_ids:filter nonexist # 返回 0
+      
+      # 3. 在应用层配合使用
+      # 先检查布隆过滤器，不存在直接返回
+      # 存在再查询缓存和数据库
