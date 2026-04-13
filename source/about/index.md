@@ -46,8 +46,8 @@ Hi! I'm **fred** 👋
 
 ## 联系方式
 
-- 📧 Email：your@email.com
-- 🔗 GitHub：https://github.com/fred
+- 📧 Email：l13948481962@163.com
+- 🔗 GitHub：https://github.com/lucisl
 - 💼 LinkedIn：linkedin.com/in/fred
 
 ---
