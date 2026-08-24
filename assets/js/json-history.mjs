@@ -38,7 +38,9 @@ export function loadJsonHistory(storage) {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeEntry).filter(Boolean).slice(0, HISTORY_LIMIT);
+    const entries = parsed.map(normalizeEntry).filter(Boolean).slice(0, HISTORY_LIMIT);
+    if (JSON.stringify(entries) !== JSON.stringify(parsed)) persist(storage, entries);
+    return entries;
   } catch {
     return [];
   }

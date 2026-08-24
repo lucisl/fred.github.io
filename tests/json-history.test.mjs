@@ -35,6 +35,16 @@ test('returns no history when browser storage throws', () => {
   assert.deepEqual(loadJsonHistory(storage), []);
 });
 
+test('deletes the displayed ID after recovering a row without persistent identity fields', () => {
+  // Break caught: regenerating an ID on every load makes the row selected for deletion undeletable.
+  const storage = memoryStorage(JSON.stringify([
+    { operation: 'format', input: '{"a":1}', output: '{\n  "a": 1\n}' }
+  ]));
+
+  const [displayed] = loadJsonHistory(storage);
+  assert.deepEqual(deleteJsonHistoryEntry(storage, displayed.id), []);
+});
+
 test('keeps the newest twenty entries when a twenty-first result is saved', () => {
   // Break caught: forgetting the cap would allow local history to grow without bound.
   const storage = memoryStorage();
