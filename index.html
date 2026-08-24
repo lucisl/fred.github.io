@@ -66,13 +66,13 @@
               <option value="4">4 个空格</option>
               <option value="tab">Tab</option>
             </select>
-            <button type="button" data-action="json-example">填入示例 JSON</button>
-            <button type="button" data-action="json-format">格式化 JSON</button>
-            <button type="button" data-action="json-minify">压缩 JSON</button>
-            <button type="button" data-action="json-copy">复制处理结果</button>
-            <button type="button" data-action="json-clear">清空 JSON 内容</button>
+            <button type="button" data-action="example-json">填入示例 JSON</button>
+            <button type="button" data-action="format-json">格式化 JSON</button>
+            <button type="button" data-action="minify-json">压缩 JSON</button>
+            <button type="button" data-action="copy-json">复制处理结果</button>
+            <button type="button" data-action="clear-json">清空 JSON 内容</button>
           </div>
-          <p id="json-status" role="status" aria-live="polite">输入 JSON 后选择操作。</p>
+          <p id="json-status" data-status="idle" role="status" aria-live="polite">输入 JSON 后选择操作。</p>
         </section>
 
         <section data-tool-panel="timestamp" aria-labelledby="timestamp-title" hidden>
@@ -84,7 +84,8 @@
           <section class="current-time" aria-labelledby="current-time-title">
             <h3 id="current-time-title">当前时间</h3>
             <output id="current-time" aria-live="polite">正在读取当前时间…</output>
-            <button type="button" data-action="timestamp-now">使用当前时间</button>
+            <p>本地时区：<output id="local-zone">正在读取…</output></p>
+            <button type="button" data-action="current-time">使用当前时间</button>
           </section>
 
           <div class="timestamp-grid">
@@ -98,14 +99,15 @@
                 <option value="seconds">秒</option>
                 <option value="milliseconds">毫秒</option>
               </select>
-              <button type="button" data-action="timestamp-convert">转换时间戳</button>
+              <button type="button" data-action="convert-timestamp">转换时间戳</button>
               <dl class="result-list" aria-live="polite">
+                <div><dt>识别单位</dt><dd id="timestamp-detected-unit">—</dd></div>
                 <div><dt>本地时间</dt><dd id="timestamp-local">—</dd></div>
                 <div><dt>UTC 时间</dt><dd id="timestamp-utc">—</dd></div>
                 <div><dt>ISO 8601</dt><dd id="timestamp-iso">—</dd></div>
                 <div><dt>相对时间</dt><dd id="timestamp-relative">—</dd></div>
               </dl>
-              <p id="timestamp-error" role="alert" aria-live="polite"></p>
+              <p id="timestamp-error" data-status="idle" role="status" aria-live="polite">输入时间戳后开始转换。</p>
             </section>
 
             <section aria-labelledby="date-to-timestamp-title">
@@ -119,18 +121,18 @@
                 <label><input id="timezone-mode" name="timezone-mode" type="radio" value="local" checked> 浏览器本地时区</label>
                 <label><input name="timezone-mode" type="radio" value="utc"> UTC</label>
               </fieldset>
-              <button type="button" data-action="date-convert">转换为时间戳</button>
+              <button type="button" data-action="convert-date">转换为时间戳</button>
               <dl class="result-list" aria-live="polite">
                 <div><dt>秒级时间戳</dt><dd id="date-seconds">—</dd></div>
                 <div><dt>毫秒级时间戳</dt><dd id="date-milliseconds">—</dd></div>
                 <div><dt>ISO 8601</dt><dd id="date-iso">—</dd></div>
               </dl>
-              <p id="date-error" role="alert" aria-live="polite"></p>
+              <p id="date-error" data-status="idle" role="status" aria-live="polite">选择日期与时间后开始转换。</p>
             </section>
           </div>
           <div class="tool-controls" aria-label="时间戳操作">
-            <button type="button" data-action="timestamp-copy">复制时间戳结果</button>
-            <button type="button" data-action="timestamp-clear">清空时间戳内容</button>
+            <button type="button" data-action="copy-timestamp">复制时间戳结果</button>
+            <button type="button" data-action="clear-timestamp">清空时间戳内容</button>
           </div>
         </section>
       </main>
