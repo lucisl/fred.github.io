@@ -219,11 +219,13 @@ function renderJsonHistory() {
   const items = jsonHistory.map(entry => {
     const item = document.createElement('li');
     item.className = 'json-history-item';
+    const operationLabel = JSON_OPERATIONS[entry.operation]?.label || entry.operation;
+    const timeLabel = formatHistoryTime(entry.createdAt);
     const meta = document.createElement('div');
     meta.className = 'json-history-meta';
     meta.append(
-      createTextElement('strong', '', JSON_OPERATIONS[entry.operation]?.label || entry.operation),
-      createTextElement('time', '', formatHistoryTime(entry.createdAt))
+      createTextElement('strong', '', operationLabel),
+      createTextElement('time', '', timeLabel)
     );
     const preview = createTextElement('p', 'json-history-preview', entry.input.replace(/\s+/g, ' ').slice(0, 88));
     const controls = document.createElement('div');
@@ -231,10 +233,12 @@ function renderJsonHistory() {
     const restore = createTextElement('button', '', '恢复');
     restore.type = 'button';
     restore.dataset.historyRestore = entry.id;
+    restore.setAttribute('aria-label', `恢复 ${timeLabel} ${operationLabel}记录`);
     restore.addEventListener('click', () => restoreHistoryEntry(entry));
     const remove = createTextElement('button', '', '删除');
     remove.type = 'button';
     remove.dataset.historyDelete = entry.id;
+    remove.setAttribute('aria-label', `删除 ${timeLabel} ${operationLabel}记录`);
     remove.addEventListener('click', () => {
       jsonHistory = deleteJsonHistoryEntry(jsonStorage, entry.id);
       renderJsonHistory();
@@ -489,6 +493,7 @@ action('collapse-json-tree').addEventListener('click', () => {
   jsonTree.querySelectorAll('details').forEach(details => { details.open = false; });
 });
 action('clear-json-history').addEventListener('click', () => {
+  resetCopyFeedback(action('copy-json'));
   jsonHistory = clearJsonHistory(jsonStorage);
   renderJsonHistory();
   setStatus(jsonStatus, 'idle', 'JSON 历史已清空。');

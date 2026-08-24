@@ -327,12 +327,14 @@ test('JSON transforms save only successful operations and restore or remove loca
   assert.equal(elements.get('json-history-list').children.length, 2);
 
   const restoreOlder = historyButton('historyRestore', 1);
+  assert.match(restoreOlder.attributes.get('aria-label'), /^恢复 .+ 格式化记录$/);
   await restoreOlder.dispatch('click');
   assert.equal(elements.get('json-input').value, '{"name":"DevKit","nested":{"ok":true}}');
   assert.match(elements.get('json-output').value, /"nested"/);
   assert.equal(actions.get('toggle-json-tree').disabled, false);
 
   const deleteNewest = historyButton('historyDelete', 0);
+  assert.match(deleteNewest.attributes.get('aria-label'), /^删除 .+ 转义记录$/);
   await deleteNewest.dispatch('click');
   assert.equal(elements.get('json-history-list').children.length, 1);
 
@@ -392,5 +394,23 @@ test('unescape failure invalidates clipboard authority without adding history', 
   pending.resolve();
   await copying;
   assert.equal(elements.get('json-status').textContent, authoritativeError);
+  assert.equal(actions.get('copy-json').textContent, '复制处理结果');
+});
+
+test('clearing JSON history remains authoritative over an older clipboard promise', async () => {
+  const { actions, elements } = harness;
+  elements.get('json-input').value = '{"copy":"pending"}';
+  await actions.get('format-json').dispatch('click');
+
+  const pending = deferred();
+  clipboardWrites.push(() => pending.promise);
+  const copying = actions.get('copy-json').dispatch('click');
+  await actions.get('clear-json-history').dispatch('click');
+  assert.equal(elements.get('json-status').textContent, 'JSON 历史已清空。');
+  assert.equal(actions.get('copy-json').textContent, '复制处理结果');
+
+  pending.resolve();
+  await copying;
+  assert.equal(elements.get('json-status').textContent, 'JSON 历史已清空。');
   assert.equal(actions.get('copy-json').textContent, '复制处理结果');
 });
