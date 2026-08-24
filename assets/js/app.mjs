@@ -40,7 +40,7 @@ const dateResults = {
 };
 
 let clockTimer;
-const copyResetTimers = new WeakMap();
+const copyOperations = new WeakMap();
 
 function action(name) {
   return document.querySelector(`[data-action="${name}"]`);
@@ -153,14 +153,19 @@ function pad(value) {
 
 function useCurrentTime() {
   const now = new Date();
-  timestampInput.value = String(now.getTime());
-  dateInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  timeInput.value = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const milliseconds = now.getTime();
+  const unit = timestampUnit.value;
+  const utc = selectedZone() === 'utc';
+  const get = part => now[`${utc ? 'getUTC' : 'get'}${part}`]();
+
+  timestampInput.value = String(unit === 'seconds' ? Math.floor(milliseconds / 1000) : milliseconds);
+  dateInput.value = `${get('FullYear')}-${pad(get('Month') + 1)}-${pad(get('Date'))}`;
+  timeInput.value = `${pad(get('Hours'))}:${pad(get('Minutes'))}:${pad(get('Seconds'))}`;
   detectedUnit.textContent = '—';
   clearElements(timestampResults);
   clearElements(dateResults);
-  setStatus(timestampStatus, 'idle', '已填入当前毫秒级时间戳。');
-  setStatus(dateStatus, 'idle', '已填入当前本地日期与时间。');
+  setStatus(timestampStatus, 'idle', `已填入当前${unit === 'seconds' ? '秒级' : '毫秒级'}时间戳。`);
+  setStatus(dateStatus, 'idle', `已填入当前${utc ? 'UTC' : '本地'}日期与时间。`);
 }
 
 function fallbackCopy(value) {
@@ -179,7 +184,11 @@ function fallbackCopy(value) {
 }
 
 async function copyText(value, trigger, statusTarget) {
-  const original = trigger.dataset.copyLabel || trigger.textContent;
+  const previous = copyOperations.get(trigger);
+  const original = previous?.original || trigger.dataset.copyLabel || trigger.textContent;
+  const generation = (previous?.generation || 0) + 1;
+  window.clearTimeout(previous?.resetTimer);
+  copyOperations.set(trigger, { generation, original, resetTimer: null });
   trigger.dataset.copyLabel = original;
   let copied = false;
 
@@ -187,23 +196,39 @@ async function copyText(value, trigger, statusTarget) {
     if (!value) throw new Error('empty');
     if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
     else fallbackCopy(value);
+    if (copyOperations.get(trigger)?.generation !== generation) return false;
     copied = true;
     trigger.textContent = '已复制';
     setStatus(statusTarget, 'success', '结果已复制到剪贴板。');
   } catch {
+    if (copyOperations.get(trigger)?.generation !== generation) return false;
     trigger.textContent = '复制失败';
     setStatus(statusTarget, 'error', value ? '无法访问剪贴板，请手动复制。' : '没有可复制的结果。');
   }
 
-  window.clearTimeout(copyResetTimers.get(trigger));
   const resetTimer = window.setTimeout(() => {
+    const current = copyOperations.get(trigger);
+    if (current?.generation !== generation) return;
     trigger.textContent = original;
     delete trigger.dataset.copyLabel;
-    copyResetTimers.delete(trigger);
+    current.resetTimer = null;
   }, 1600);
-  copyResetTimers.set(trigger, resetTimer);
+  copyOperations.get(trigger).resetTimer = resetTimer;
 
   return copied;
+}
+
+function resetCopyFeedback(trigger) {
+  const previous = copyOperations.get(trigger);
+  const original = previous?.original || trigger.dataset.copyLabel || trigger.textContent;
+  window.clearTimeout(previous?.resetTimer);
+  copyOperations.set(trigger, {
+    generation: (previous?.generation || 0) + 1,
+    original,
+    resetTimer: null
+  });
+  trigger.textContent = original;
+  delete trigger.dataset.copyLabel;
 }
 
 function timestampCopyValue() {
@@ -228,6 +253,7 @@ function timestampCopyValue() {
 }
 
 function clearTimestampTool() {
+  resetCopyFeedback(action('copy-timestamp'));
   timestampInput.value = '';
   dateInput.value = '';
   timeInput.value = '';
@@ -269,6 +295,7 @@ action('format-json').addEventListener('click', () => runJson('format'));
 action('minify-json').addEventListener('click', () => runJson('minify'));
 action('copy-json').addEventListener('click', event => copyText(jsonOutput.value, event.currentTarget, jsonStatus));
 action('clear-json').addEventListener('click', () => {
+  resetCopyFeedback(action('copy-json'));
   jsonInput.value = '';
   jsonOutput.value = '';
   setStatus(jsonStatus, 'idle', '输入 JSON 后选择操作。');
