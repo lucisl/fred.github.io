@@ -38,6 +38,17 @@ test('converts UTC date fields to seconds and milliseconds', () => {
   });
 });
 
+test('strictly round-trips local date fields and rejects local rollover dates', () => {
+  const result = dateTimeToTimestamps('2026-01-15', '12:34:56', 'local');
+  assert.equal(result.ok, true);
+  const localDate = new Date(result.milliseconds);
+  assert.deepEqual([
+    localDate.getFullYear(), localDate.getMonth() + 1, localDate.getDate(),
+    localDate.getHours(), localDate.getMinutes(), localDate.getSeconds()
+  ], [2026, 1, 15, 12, 34, 56]);
+  assert.equal(dateTimeToTimestamps('2026-02-30', '12:00:00', 'local').ok, false);
+});
+
 test('formats past and future relative values', () => {
   assert.equal(formatRelative(60_000, 0), '1 分钟后');
   assert.equal(formatRelative(-7_200_000, 0), '2 小时前');
@@ -47,6 +58,8 @@ test('rejects blank, non-finite, malformed, and out-of-range values', () => {
   for (const value of ['', 'abc', 'Infinity', '1e100']) {
     assert.equal(normalizeTimestamp(value, 'auto').ok, false);
   }
+  assert.equal(normalizeTimestamp('8640000000000001', 'milliseconds').ok, false);
+  assert.equal(normalizeTimestamp('8640000000001', 'seconds').ok, false);
   assert.equal(dateTimeToTimestamps('', '12:00:00', 'utc').ok, false);
   assert.equal(dateTimeToTimestamps('2026-02-30', '12:00:00', 'utc').ok, false);
 });
