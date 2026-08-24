@@ -132,6 +132,7 @@ function createHarness() {
   const elements = new Map();
   const actions = new Map();
   const documentListeners = new Map();
+  const windowListeners = new Map();
   const timers = new Map();
   const timerCallbacks = new Map();
   let nextTimer = 1;
@@ -146,7 +147,6 @@ function createHarness() {
       if (selector.startsWith('#')) return elements.get(selector.slice(1));
       const actionMatch = selector.match(/^\[data-action="(.+)"\]$/);
       if (actionMatch) return actions.get(actionMatch[1]);
-      if (selector === 'input[name="timezone-mode"]:checked') return elements.get('timezone-mode');
       return null;
     },
     querySelectorAll() { return []; }
@@ -169,13 +169,13 @@ function createHarness() {
     'json-tree', 'json-history-list', 'json-history-empty',
     'timestamp-input', 'timestamp-error', 'date-input', 'time-input', 'date-error',
     'current-time', 'local-zone', 'timestamp-detected-unit', 'timestamp-local',
-    'timestamp-utc', 'timestamp-iso', 'timestamp-relative', 'date-seconds',
+    'timestamp-utc', 'timestamp-iso', 'timestamp-relative', 'timestamp-zoned',
+    'timestamp-zone-name', 'date-seconds',
     'date-milliseconds', 'date-iso'
   ]) addElement(id);
   addElement('json-indent', { value: '2' });
   addElement('timestamp-unit', { value: 'auto' });
-  const timezoneMode = addElement('timezone-mode', { value: 'utc' });
-  timezoneMode.checked = true;
+  addElement('timezone-mode', { value: 'utc', tagName: 'select' });
 
   for (const [name, label] of [
     ['example-json', '填入示例 JSON'], ['format-json', '格式化 JSON'],
@@ -189,7 +189,8 @@ function createHarness() {
   ]) addAction(name, label);
 
   const window = {
-    addEventListener() {},
+    addEventListener(type, listener) { windowListeners.set(type, listener); },
+    async dispatch(type) { await windowListeners.get(type)?.(); },
     setInterval() { return 1; },
     clearInterval() {},
     setTimeout(callback) {
@@ -220,6 +221,89 @@ Object.defineProperties(globalThis, {
 });
 
 await import(`../assets/js/app.mjs?copy-race=${Date.now()}`);
+
+test('selected IANA zone drives timestamp output, date conversion, copy, and survives clear or route changes', async () => {
+  const { actions, elements, window } = harness;
+  const zone = elements.get('timezone-mode');
+  zone.value = 'America/New_York';
+
+  elements.get('timestamp-input').value = '1704067200';
+  elements.get('timestamp-unit').value = 'seconds';
+  await actions.get('convert-timestamp').dispatch('click');
+  assert.equal(elements.get('timestamp-zoned').textContent, '2023年12月31日星期日 19:00:00');
+  assert.equal(elements.get('timestamp-zone-name').textContent, 'America/New_York');
+
+  elements.get('date-input').value = '2024-01-01';
+  elements.get('time-input').value = '00:00:00';
+  await actions.get('convert-date').dispatch('click');
+  assert.equal(elements.get('date-milliseconds').textContent, '1704085200000');
+  assert.match(elements.get('date-error').textContent, /America\/New_York/);
+
+  let copied = '';
+  clipboardWrites.push(value => {
+    copied = value;
+    return Promise.resolve();
+  });
+  await actions.get('copy-timestamp').dispatch('click');
+  assert.match(copied, /所选区域时间：2023年12月31日星期日 19:00:00/);
+  assert.match(copied, /时区标识：America\/New_York/);
+
+  await actions.get('clear-timestamp').dispatch('click');
+  assert.equal(zone.value, 'America/New_York');
+  globalThis.location.hash = '#timestamp';
+  await window.dispatch('hashchange');
+  assert.equal(zone.value, 'America/New_York');
+});
+
+test('New York DST gap error remains authoritative over an older clipboard promise', async () => {
+  const { actions, elements } = harness;
+  await actions.get('clear-timestamp').dispatch('click');
+  elements.get('timezone-mode').value = 'America/New_York';
+  elements.get('date-input').value = '2024-01-01';
+  elements.get('time-input').value = '00:00:00';
+  await actions.get('convert-date').dispatch('click');
+
+  const pending = deferred();
+  clipboardWrites.push(() => pending.promise);
+  const copying = actions.get('copy-timestamp').dispatch('click');
+  elements.get('date-input').value = '2024-03-10';
+  elements.get('time-input').value = '02:30:00';
+  await actions.get('convert-date').dispatch('click');
+  const authoritativeError = elements.get('date-error').textContent;
+  assert.equal(elements.get('date-error').dataset.status, 'error');
+  assert.match(authoritativeError, /不存在/);
+
+  pending.resolve();
+  await copying;
+  assert.equal(elements.get('date-error').dataset.status, 'error');
+  assert.equal(elements.get('date-error').textContent, authoritativeError);
+  assert.equal(actions.get('copy-timestamp').textContent, '复制时间戳结果');
+});
+
+test('current-time fill uses calendar parts from the selected IANA zone', async () => {
+  const { actions, elements } = harness;
+  const NativeDate = globalThis.Date;
+  const fixedNow = NativeDate.parse('2024-07-01T12:34:56Z');
+  globalThis.Date = class extends NativeDate {
+    constructor(...args) {
+      super(...(args.length ? args : [fixedNow]));
+    }
+
+    static now() { return fixedNow; }
+  };
+
+  try {
+    elements.get('timezone-mode').value = 'America/New_York';
+    elements.get('timestamp-unit').value = 'milliseconds';
+    await actions.get('current-time').dispatch('click');
+    assert.equal(elements.get('timestamp-input').value, String(fixedNow));
+    assert.equal(elements.get('date-input').value, '2024-07-01');
+    assert.equal(elements.get('time-input').value, '08:34:56');
+    assert.match(elements.get('date-error').textContent, /America\/New_York/);
+  } finally {
+    globalThis.Date = NativeDate;
+  }
+});
 
 test('new JSON, timestamp, and date errors remain authoritative over older clipboard promises', async () => {
   const { actions, elements } = harness;

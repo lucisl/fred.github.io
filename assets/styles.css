@@ -856,6 +856,40 @@ button:active:not(:disabled) {
   background: var(--lime);
 }
 
+.timezone-selector {
+  display: grid;
+  min-width: 0;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(280px, .65fr);
+  align-items: center;
+  gap: 10px 16px;
+  border: 1px solid var(--line-paper);
+  border-radius: 14px;
+  background: var(--paper-muted);
+}
+
+.timezone-selector h3 {
+  font-size: .92rem;
+}
+
+.timezone-selector p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: .68rem;
+}
+
+.timezone-selector label {
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.timezone-selector select {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: .74rem;
+}
+
 .timestamp-grid > section {
   display: flex;
   padding: clamp(18px, 2.2vw, 26px);

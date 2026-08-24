@@ -113,6 +113,53 @@
             <button type="button" data-action="current-time">使用当前时间</button>
           </section>
 
+          <section class="timezone-selector" aria-labelledby="timezone-selector-title">
+            <div>
+              <h3 id="timezone-selector-title">转换时区</h3>
+              <p>同一时区用于下方两个方向的转换，也用于“使用当前时间”。</p>
+            </div>
+            <label for="timezone-mode">选择国际区域</label>
+            <select id="timezone-mode" name="timezone-mode">
+              <optgroup label="浏览器与 UTC">
+                <option value="local" selected>浏览器本地时区</option>
+                <option value="utc">协调世界时（UTC）</option>
+              </optgroup>
+              <optgroup label="美洲">
+                <option value="America/New_York">纽约（America/New_York）</option>
+                <option value="America/Los_Angeles">洛杉矶（America/Los_Angeles）</option>
+                <option value="America/Chicago">芝加哥（America/Chicago）</option>
+                <option value="America/Toronto">多伦多（America/Toronto）</option>
+                <option value="America/Sao_Paulo">圣保罗（America/Sao_Paulo）</option>
+                <option value="America/Mexico_City">墨西哥城（America/Mexico_City）</option>
+              </optgroup>
+              <optgroup label="欧洲">
+                <option value="Europe/London">伦敦（Europe/London）</option>
+                <option value="Europe/Paris">巴黎（Europe/Paris）</option>
+                <option value="Europe/Berlin">柏林（Europe/Berlin）</option>
+                <option value="Europe/Amsterdam">阿姆斯特丹（Europe/Amsterdam）</option>
+                <option value="Europe/Moscow">莫斯科（Europe/Moscow）</option>
+              </optgroup>
+              <optgroup label="亚洲与中东">
+                <option value="Asia/Shanghai">上海（Asia/Shanghai）</option>
+                <option value="Asia/Hong_Kong">香港（Asia/Hong_Kong）</option>
+                <option value="Asia/Tokyo">东京（Asia/Tokyo）</option>
+                <option value="Asia/Seoul">首尔（Asia/Seoul）</option>
+                <option value="Asia/Singapore">新加坡（Asia/Singapore）</option>
+                <option value="Asia/Kolkata">加尔各答（Asia/Kolkata）</option>
+                <option value="Asia/Dubai">迪拜（Asia/Dubai）</option>
+              </optgroup>
+              <optgroup label="非洲">
+                <option value="Africa/Cairo">开罗（Africa/Cairo）</option>
+                <option value="Africa/Johannesburg">约翰内斯堡（Africa/Johannesburg）</option>
+                <option value="Africa/Lagos">拉各斯（Africa/Lagos）</option>
+              </optgroup>
+              <optgroup label="大洋洲">
+                <option value="Australia/Sydney">悉尼（Australia/Sydney）</option>
+                <option value="Pacific/Auckland">奥克兰（Pacific/Auckland）</option>
+              </optgroup>
+            </select>
+          </section>
+
           <div class="timestamp-grid">
             <section aria-labelledby="timestamp-to-date-title">
               <h3 id="timestamp-to-date-title">时间戳转日期</h3>
@@ -129,6 +176,8 @@
                 <div><dt>识别单位</dt><dd id="timestamp-detected-unit">—</dd></div>
                 <div><dt>本地时间</dt><dd id="timestamp-local">—</dd></div>
                 <div><dt>UTC 时间</dt><dd id="timestamp-utc">—</dd></div>
+                <div><dt>所选区域时间</dt><dd id="timestamp-zoned">—</dd></div>
+                <div><dt>时区标识</dt><dd id="timestamp-zone-name">—</dd></div>
                 <div><dt>ISO 8601</dt><dd id="timestamp-iso">—</dd></div>
                 <div><dt>相对时间</dt><dd id="timestamp-relative">—</dd></div>
               </dl>
@@ -141,11 +190,6 @@
               <input id="date-input" name="date-input" type="date">
               <label for="time-input">时间</label>
               <input id="time-input" name="time-input" type="time" step="1">
-              <fieldset>
-                <legend>日期输入时区</legend>
-                <label><input id="timezone-mode" name="timezone-mode" type="radio" value="local" checked> 浏览器本地时区</label>
-                <label><input name="timezone-mode" type="radio" value="utc"> UTC</label>
-              </fieldset>
               <button type="button" data-action="convert-date">转换为时间戳</button>
               <dl class="result-list" aria-live="polite">
                 <div><dt>秒级时间戳</dt><dd id="date-seconds">—</dd></div>

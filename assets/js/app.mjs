@@ -5,7 +5,7 @@ import {
   loadJsonHistory,
   saveJsonHistoryEntry
 } from './json-history.mjs';
-import { dateTimeToTimestamps, timestampToRepresentations } from './timestamp-core.mjs';
+import { datePartsInZone, dateTimeToTimestamps, timestampToRepresentations } from './timestamp-core.mjs';
 import { normalizeToolHash } from './router-core.mjs';
 
 const JSON_EXAMPLE = {
@@ -34,12 +34,15 @@ const dateStatus = document.querySelector('#date-error');
 const currentTime = document.querySelector('#current-time');
 const localZone = document.querySelector('#local-zone');
 const detectedUnit = document.querySelector('#timestamp-detected-unit');
+const timezoneMode = document.querySelector('#timezone-mode');
 
 const timestampResults = {
   local: document.querySelector('#timestamp-local'),
   utc: document.querySelector('#timestamp-utc'),
   iso: document.querySelector('#timestamp-iso'),
-  relative: document.querySelector('#timestamp-relative')
+  relative: document.querySelector('#timestamp-relative'),
+  zoned: document.querySelector('#timestamp-zoned'),
+  timeZone: document.querySelector('#timestamp-zone-name')
 };
 
 const dateResults = {
@@ -295,7 +298,7 @@ function renderTimestampError(message) {
 
 function convertTimestamp() {
   resetCopyFeedback(action('copy-timestamp'));
-  const result = timestampToRepresentations(timestampInput.value, timestampUnit.value);
+  const result = timestampToRepresentations(timestampInput.value, timestampUnit.value, Date.now(), selectedZone());
   if (!result.ok) {
     renderTimestampError(result.error);
     return;
@@ -305,12 +308,14 @@ function convertTimestamp() {
   timestampResults.utc.textContent = result.utc;
   timestampResults.iso.textContent = result.iso;
   timestampResults.relative.textContent = result.relative;
+  timestampResults.zoned.textContent = result.zoned;
+  timestampResults.timeZone.textContent = result.timeZone;
   detectedUnit.textContent = result.detectedUnit === 'seconds' ? '秒级' : '毫秒级';
-  setStatus(timestampStatus, 'success', '时间戳转换完成。');
+  setStatus(timestampStatus, 'success', `时间戳已按 ${result.timeZone} 转换完成。`);
 }
 
 function selectedZone() {
-  return document.querySelector('input[name="timezone-mode"]:checked').value;
+  return timezoneMode.value;
 }
 
 function renderDateError(message) {
@@ -330,7 +335,7 @@ function convertDate() {
   dateResults.seconds.textContent = String(result.seconds);
   dateResults.milliseconds.textContent = String(result.milliseconds);
   dateResults.iso.textContent = result.iso;
-  setStatus(dateStatus, 'success', '日期时间转换完成。');
+  setStatus(dateStatus, 'success', `日期时间已按 ${selectedZone()} 转换完成。`);
 }
 
 function pad(value) {
@@ -342,17 +347,38 @@ function useCurrentTime() {
   const now = new Date();
   const milliseconds = now.getTime();
   const unit = timestampUnit.value;
-  const utc = selectedZone() === 'utc';
-  const get = part => now[`${utc ? 'getUTC' : 'get'}${part}`]();
+  const zone = selectedZone();
+  let parts;
+  if (zone === 'local') {
+    parts = {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      day: now.getDate(),
+      hour: now.getHours(),
+      minute: now.getMinutes(),
+      second: now.getSeconds()
+    };
+  } else if (zone === 'utc') {
+    parts = {
+      year: now.getUTCFullYear(),
+      month: now.getUTCMonth() + 1,
+      day: now.getUTCDate(),
+      hour: now.getUTCHours(),
+      minute: now.getUTCMinutes(),
+      second: now.getUTCSeconds()
+    };
+  } else {
+    parts = datePartsInZone(milliseconds, zone);
+  }
 
   timestampInput.value = String(unit === 'seconds' ? Math.floor(milliseconds / 1000) : milliseconds);
-  dateInput.value = `${get('FullYear')}-${pad(get('Month') + 1)}-${pad(get('Date'))}`;
-  timeInput.value = `${pad(get('Hours'))}:${pad(get('Minutes'))}:${pad(get('Seconds'))}`;
+  dateInput.value = `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
+  timeInput.value = `${pad(parts.hour)}:${pad(parts.minute)}:${pad(parts.second)}`;
   detectedUnit.textContent = '—';
   clearElements(timestampResults);
   clearElements(dateResults);
   setStatus(timestampStatus, 'idle', `已填入当前${unit === 'seconds' ? '秒级' : '毫秒级'}时间戳。`);
-  setStatus(dateStatus, 'idle', `已填入当前${utc ? 'UTC' : '本地'}日期与时间。`);
+  setStatus(dateStatus, 'idle', `已填入当前 ${zone} 日期与时间。`);
 }
 
 function fallbackCopy(value) {
@@ -425,6 +451,8 @@ function timestampCopyValue() {
       `识别单位：${detectedUnit.textContent}`,
       `本地时间：${timestampResults.local.textContent}`,
       `UTC 时间：${timestampResults.utc.textContent}`,
+      `所选区域时间：${timestampResults.zoned.textContent}`,
+      `时区标识：${timestampResults.timeZone.textContent}`,
       `ISO 8601：${timestampResults.iso.textContent}`,
       `相对时间：${timestampResults.relative.textContent}`
     );
