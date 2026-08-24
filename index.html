@@ -15,6 +15,7 @@
     <meta property="og:url" content="/">
     <meta property="og:image" content="./assets/favicon.svg">
     <meta property="og:image:alt" content="DevKit 终端图标">
+    <link rel="stylesheet" href="./assets/styles.css">
   </head>
   <body>
     <a class="skip-link" href="#main-content">跳到主要内容</a>
@@ -24,7 +25,7 @@
           <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24"><path d="m5 7 5 5-5 5M12 17h7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
           <span>DevKit</span>
         </a>
-        <nav aria-label="开发工具">
+        <nav class="tool-nav" aria-label="开发工具">
           <ul>
             <li><a data-tool-link="json" href="#json" aria-current="page">JSON 格式化</a></li>
             <li><a data-tool-link="timestamp" href="#timestamp">时间戳转换</a></li>
@@ -34,20 +35,20 @@
         <footer>DevKit · 本地优先</footer>
       </aside>
 
-      <main id="main-content" tabindex="-1">
+      <main id="main-content" class="workspace" tabindex="-1">
         <header class="workspace-header">
           <p class="eyebrow">DEVELOPER TOOLBOX</p>
-          <h1>在线开发工具箱</h1>
+          <h1 class="page-title">在线开发工具箱</h1>
           <p>快速处理常见开发数据，无需注册。</p>
         </header>
 
-        <section data-tool-panel="json" aria-labelledby="json-title">
+        <section class="tool-panel" data-tool-panel="json" aria-labelledby="json-title">
           <header>
             <p class="eyebrow">01 / DATA</p>
             <h2 id="json-title">JSON 格式化</h2>
             <p>校验、格式化或压缩 JSON 内容。</p>
           </header>
-          <div class="tool-grid">
+          <div class="editor-grid">
             <div class="field-group">
               <label for="json-input">输入 JSON</label>
               <textarea id="json-input" name="json-input" rows="16" spellcheck="false" placeholder="粘贴或输入 JSON 内容"></textarea>
@@ -75,7 +76,7 @@
           <p id="json-status" data-status="idle" role="status" aria-live="polite">输入 JSON 后选择操作。</p>
         </section>
 
-        <section data-tool-panel="timestamp" aria-labelledby="timestamp-title" hidden>
+        <section class="tool-panel" data-tool-panel="timestamp" aria-labelledby="timestamp-title" hidden>
           <header>
             <p class="eyebrow">02 / TIME</p>
             <h2 id="timestamp-title">时间戳转换</h2>
