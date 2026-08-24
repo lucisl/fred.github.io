@@ -2,17 +2,40 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 class FakeElement {
-  constructor(document, { textContent = '', value = '' } = {}) {
+  constructor(document, { textContent = '', value = '', tagName = 'div' } = {}) {
     this.document = document;
+    this.tagName = tagName.toUpperCase();
     this._textContent = textContent;
     this.textWrites = 0;
     this.value = value;
     this.dataset = {};
     this.style = {};
+    this.children = [];
+    this.parentElement = null;
     this.listeners = new Map();
     this.attributes = new Map();
     this.checked = false;
     this.hidden = false;
+    this.disabled = false;
+    this.open = false;
+    this.className = '';
+    this.classList = {
+      add: (...names) => {
+        const current = new Set(this.className.split(/\s+/).filter(Boolean));
+        names.forEach(name => current.add(name));
+        this.className = [...current].join(' ');
+      },
+      remove: (...names) => {
+        const removed = new Set(names);
+        this.className = this.className.split(/\s+/).filter(name => name && !removed.has(name)).join(' ');
+      },
+      toggle: (name, force) => {
+        const present = this.className.split(/\s+/).includes(name);
+        const add = force === undefined ? !present : force;
+        this.classList[add ? 'add' : 'remove'](name);
+        return add;
+      }
+    };
   }
 
   get textContent() {
@@ -30,10 +53,35 @@ class FakeElement {
     this.listeners.set(type, listeners);
   }
 
-  async dispatch(type) {
-    const event = { currentTarget: this };
+  async dispatch(type, target = this) {
+    const event = { currentTarget: this, target };
     const results = (this.listeners.get(type) || []).map(listener => listener(event));
     await Promise.all(results);
+  }
+
+  append(...children) {
+    children.forEach(child => {
+      child.parentElement = this;
+      this.children.push(child);
+    });
+  }
+
+  replaceChildren(...children) {
+    this.children.forEach(child => { child.parentElement = null; });
+    this.children = [];
+    this.append(...children);
+  }
+
+  querySelectorAll(selector) {
+    const matches = [];
+    const visit = node => {
+      node.children.forEach(child => {
+        if (selector === 'details' && child.tagName === 'DETAILS') matches.push(child);
+        visit(child);
+      });
+    };
+    visit(this);
+    return matches;
   }
 
   focus() {
@@ -49,7 +97,29 @@ class FakeElement {
   }
 
   select() {}
-  remove() {}
+  remove() {
+    if (!this.parentElement) return;
+    this.parentElement.children = this.parentElement.children.filter(child => child !== this);
+    this.parentElement = null;
+  }
+}
+
+class FakeStorage {
+  constructor() {
+    this.values = new Map();
+  }
+
+  getItem(key) {
+    return this.values.has(key) ? this.values.get(key) : null;
+  }
+
+  setItem(key, value) {
+    this.values.set(key, String(value));
+  }
+
+  removeItem(key) {
+    this.values.delete(key);
+  }
 }
 
 function deferred() {
@@ -71,7 +141,7 @@ function createHarness() {
     visibilityState: 'visible',
     body: { append() {} },
     addEventListener(type, listener) { documentListeners.set(type, listener); },
-    createElement() { return new FakeElement(document); },
+    createElement(tagName) { return new FakeElement(document, { tagName }); },
     querySelector(selector) {
       if (selector.startsWith('#')) return elements.get(selector.slice(1));
       const actionMatch = selector.match(/^\[data-action="(.+)"\]$/);
@@ -96,6 +166,7 @@ function createHarness() {
 
   for (const id of [
     'json-input', 'json-output', 'json-input-count', 'json-output-count', 'json-status',
+    'json-tree', 'json-history-list', 'json-history-empty',
     'timestamp-input', 'timestamp-error', 'date-input', 'time-input', 'date-error',
     'current-time', 'local-zone', 'timestamp-detected-unit', 'timestamp-local',
     'timestamp-utc', 'timestamp-iso', 'timestamp-relative', 'date-seconds',
@@ -108,7 +179,10 @@ function createHarness() {
 
   for (const [name, label] of [
     ['example-json', '填入示例 JSON'], ['format-json', '格式化 JSON'],
-    ['minify-json', '压缩 JSON'], ['copy-json', '复制处理结果'],
+    ['minify-json', '压缩 JSON'], ['escape-json', '转义文本'],
+    ['unescape-json', '去除转义'], ['copy-json', '复制处理结果'],
+    ['toggle-json-tree', '树形视图'], ['expand-json-tree', '全部展开'],
+    ['collapse-json-tree', '全部收起'], ['clear-json-history', '清空历史'],
     ['clear-json', '清空 JSON 内容'], ['convert-timestamp', '转换时间戳'],
     ['convert-date', '转换为时间戳'], ['current-time', '使用当前时间'],
     ['copy-timestamp', '复制时间戳结果'], ['clear-timestamp', '清空时间戳内容']
@@ -131,6 +205,7 @@ function createHarness() {
 }
 
 const harness = createHarness();
+const localStorage = new FakeStorage();
 const clipboardWrites = [];
 Object.defineProperties(globalThis, {
   document: { configurable: true, value: harness.document },
@@ -140,7 +215,8 @@ Object.defineProperties(globalThis, {
   navigator: {
     configurable: true,
     value: { clipboard: { writeText: value => clipboardWrites.shift()(value) } }
-  }
+  },
+  localStorage: { configurable: true, value: localStorage }
 });
 
 await import(`../assets/js/app.mjs?copy-race=${Date.now()}`);
@@ -220,4 +296,101 @@ test('new JSON, timestamp, and date errors remain authoritative over older clipb
   const writesAfterInvalidation = actions.get('copy-json').textWrites;
   staleReset();
   assert.equal(actions.get('copy-json').textWrites, writesAfterInvalidation);
+});
+
+function descendants(root) {
+  return root.children.flatMap(child => [child, ...descendants(child)]);
+}
+
+function historyButton(kind, index = 0) {
+  return descendants(harness.elements.get('json-history-list'))
+    .filter(element => element.dataset[kind])[index];
+}
+
+test('JSON transforms save only successful operations and restore or remove local history', async () => {
+  const { actions, elements } = harness;
+  await actions.get('clear-json-history').dispatch('click');
+
+  elements.get('json-input').value = '{"name":"DevKit","nested":{"ok":true}}';
+  await actions.get('format-json').dispatch('click');
+  assert.match(elements.get('json-output').value, /\n  "name"/);
+  assert.equal(elements.get('json-history-list').children.length, 1);
+
+  elements.get('json-input').value = 'line 1\n"quoted"';
+  await actions.get('escape-json').dispatch('click');
+  assert.equal(elements.get('json-output').value, 'line 1\\n\\"quoted\\"');
+  assert.equal(elements.get('json-history-list').children.length, 2);
+  assert.equal(actions.get('toggle-json-tree').disabled, true);
+
+  elements.get('json-input').value = '{';
+  await actions.get('format-json').dispatch('click');
+  assert.equal(elements.get('json-history-list').children.length, 2);
+
+  const restoreOlder = historyButton('historyRestore', 1);
+  await restoreOlder.dispatch('click');
+  assert.equal(elements.get('json-input').value, '{"name":"DevKit","nested":{"ok":true}}');
+  assert.match(elements.get('json-output').value, /"nested"/);
+  assert.equal(actions.get('toggle-json-tree').disabled, false);
+
+  const deleteNewest = historyButton('historyDelete', 0);
+  await deleteNewest.dispatch('click');
+  assert.equal(elements.get('json-history-list').children.length, 1);
+
+  await actions.get('clear-json').dispatch('click');
+  assert.equal(elements.get('json-output').value, '');
+  assert.equal(elements.get('json-history-list').children.length, 1);
+
+  await actions.get('clear-json-history').dispatch('click');
+  assert.equal(elements.get('json-history-list').children.length, 0);
+  assert.equal(elements.get('json-history-empty').hidden, false);
+});
+
+test('JSON tree is safe, nested, switchable, and supports expand or collapse all', async () => {
+  const { actions, elements } = harness;
+  elements.get('json-input').value = '{"html":"<img src=x onerror=alert(1)>","nested":{"items":[1,{"deep":true}]}}';
+  await actions.get('format-json').dispatch('click');
+
+  assert.equal(elements.get('json-tree').children.length, 1);
+  const details = elements.get('json-tree').querySelectorAll('details');
+  assert.ok(details.length >= 4);
+  assert.equal(details[0].open, true);
+  assert.equal(details[1].open, true);
+  assert.equal(details.at(-1).open, false);
+  assert.ok(descendants(elements.get('json-tree')).some(node => node.textContent.includes('<img src=x')));
+  assert.equal(descendants(elements.get('json-tree')).some(node => node.tagName === 'IMG'), false);
+
+  await actions.get('toggle-json-tree').dispatch('click');
+  assert.equal(elements.get('json-tree').hidden, false);
+  assert.equal(elements.get('json-output').hidden, true);
+
+  await actions.get('expand-json-tree').dispatch('click');
+  assert.ok(details.every(detail => detail.open));
+  await actions.get('collapse-json-tree').dispatch('click');
+  assert.ok(details.every(detail => !detail.open));
+
+  await actions.get('toggle-json-tree').dispatch('click');
+  assert.equal(elements.get('json-tree').hidden, true);
+  assert.equal(elements.get('json-output').hidden, false);
+});
+
+test('unescape failure invalidates clipboard authority without adding history', async () => {
+  const { actions, elements } = harness;
+  await actions.get('clear-json-history').dispatch('click');
+  elements.get('json-input').value = 'ok\\nvalue';
+  await actions.get('unescape-json').dispatch('click');
+  assert.equal(elements.get('json-output').value, 'ok\nvalue');
+  assert.equal(elements.get('json-history-list').children.length, 1);
+
+  const pending = deferred();
+  clipboardWrites.push(() => pending.promise);
+  const copying = actions.get('copy-json').dispatch('click');
+  elements.get('json-input').value = '\\q';
+  await actions.get('unescape-json').dispatch('click');
+  const authoritativeError = elements.get('json-status').textContent;
+  assert.equal(elements.get('json-status').dataset.status, 'error');
+  assert.equal(elements.get('json-history-list').children.length, 1);
+  pending.resolve();
+  await copying;
+  assert.equal(elements.get('json-status').textContent, authoritativeError);
+  assert.equal(actions.get('copy-json').textContent, '复制处理结果');
 });

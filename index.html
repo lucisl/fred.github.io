@@ -31,7 +31,7 @@
             <li><a data-tool-link="timestamp" href="#timestamp">时间戳转换</a></li>
           </ul>
         </nav>
-        <p class="privacy-note">所有内容仅在你的浏览器中处理，不会上传或保存。</p>
+        <p class="privacy-note">所有处理都在本地完成；JSON 历史仅保存在当前浏览器，不会上传。</p>
         <footer>DevKit · 本地优先</footer>
       </aside>
 
@@ -48,32 +48,56 @@
             <h2 id="json-title">JSON 格式化</h2>
             <p>校验、格式化或压缩 JSON 内容。</p>
           </header>
-          <div class="editor-grid">
-            <div class="field-group">
-              <label for="json-input">输入 JSON</label>
-              <textarea id="json-input" name="json-input" rows="16" spellcheck="false" placeholder="粘贴或输入 JSON 内容"></textarea>
-              <p id="json-input-count">输入：0 个字符</p>
+          <div class="json-workbench">
+            <div class="json-workbench-main">
+              <div class="editor-grid">
+                <div class="field-group">
+                  <label for="json-input">输入 JSON / 文本</label>
+                  <textarea id="json-input" name="json-input" rows="16" spellcheck="false" placeholder="粘贴 JSON，或输入需要转义的文本"></textarea>
+                  <p id="json-input-count">输入：0 个字符</p>
+                </div>
+                <div class="field-group json-result-field">
+                  <label for="json-output">处理结果</label>
+                  <textarea id="json-output" name="json-output" rows="16" readonly aria-describedby="json-output-count json-status" spellcheck="false" placeholder="处理结果会显示在这里"></textarea>
+                  <div id="json-tree" class="json-tree" aria-label="JSON 树形结果" hidden></div>
+                  <p id="json-output-count">输出：0 个字符</p>
+                </div>
+              </div>
+              <div class="tool-controls" aria-label="JSON 操作">
+                <label for="json-indent">缩进</label>
+                <select id="json-indent" name="json-indent">
+                  <option value="2">2 个空格</option>
+                  <option value="4">4 个空格</option>
+                  <option value="tab">Tab</option>
+                </select>
+                <button type="button" data-action="example-json">填入示例 JSON</button>
+                <button type="button" data-action="format-json">格式化 JSON</button>
+                <button type="button" data-action="minify-json">压缩 JSON</button>
+                <button type="button" data-action="escape-json">转义文本</button>
+                <button type="button" data-action="unescape-json">去除转义</button>
+                <button type="button" data-action="copy-json">复制处理结果</button>
+                <button type="button" data-action="clear-json">清空 JSON 内容</button>
+              </div>
+              <div class="tree-controls" aria-label="JSON 视图操作">
+                <button type="button" data-action="toggle-json-tree" disabled>树形视图</button>
+                <button type="button" data-action="expand-json-tree" disabled>全部展开</button>
+                <button type="button" data-action="collapse-json-tree" disabled>全部收起</button>
+                <span>树形视图适用于格式化或压缩后的合法 JSON。</span>
+              </div>
+              <p id="json-status" data-status="idle" role="status" aria-live="polite">输入 JSON 后选择操作。</p>
             </div>
-            <div class="field-group">
-              <label for="json-output">处理结果</label>
-              <textarea id="json-output" name="json-output" rows="16" readonly aria-describedby="json-output-count json-status" spellcheck="false" placeholder="处理结果会显示在这里"></textarea>
-              <p id="json-output-count">输出：0 个字符</p>
-            </div>
+            <aside class="json-history" aria-labelledby="json-history-title">
+              <header>
+                <div>
+                  <p class="eyebrow">LOCAL / 20</p>
+                  <h3 id="json-history-title">处理历史</h3>
+                </div>
+                <button type="button" data-action="clear-json-history">清空历史</button>
+              </header>
+              <p id="json-history-empty" class="json-history-empty">暂无记录。成功处理的最近 20 条内容会保存在此浏览器。</p>
+              <ol id="json-history-list" class="json-history-list"></ol>
+            </aside>
           </div>
-          <div class="tool-controls" aria-label="JSON 操作">
-            <label for="json-indent">缩进</label>
-            <select id="json-indent" name="json-indent">
-              <option value="2">2 个空格</option>
-              <option value="4">4 个空格</option>
-              <option value="tab">Tab</option>
-            </select>
-            <button type="button" data-action="example-json">填入示例 JSON</button>
-            <button type="button" data-action="format-json">格式化 JSON</button>
-            <button type="button" data-action="minify-json">压缩 JSON</button>
-            <button type="button" data-action="copy-json">复制处理结果</button>
-            <button type="button" data-action="clear-json">清空 JSON 内容</button>
-          </div>
-          <p id="json-status" data-status="idle" role="status" aria-live="polite">输入 JSON 后选择操作。</p>
         </section>
 
         <section class="tool-panel" data-tool-panel="timestamp" aria-labelledby="timestamp-title" hidden>

@@ -1,4 +1,10 @@
-import { formatJson, minifyJson } from './json-core.mjs';
+import { escapeJsonText, formatJson, minifyJson, unescapeJsonText } from './json-core.mjs';
+import {
+  clearJsonHistory,
+  deleteJsonHistoryEntry,
+  loadJsonHistory,
+  saveJsonHistoryEntry
+} from './json-history.mjs';
 import { dateTimeToTimestamps, timestampToRepresentations } from './timestamp-core.mjs';
 import { normalizeToolHash } from './router-core.mjs';
 
@@ -15,6 +21,9 @@ const indentSelect = document.querySelector('#json-indent');
 const jsonInputCount = document.querySelector('#json-input-count');
 const jsonOutputCount = document.querySelector('#json-output-count');
 const jsonStatus = document.querySelector('#json-status');
+const jsonTree = document.querySelector('#json-tree');
+const jsonHistoryList = document.querySelector('#json-history-list');
+const jsonHistoryEmpty = document.querySelector('#json-history-empty');
 
 const timestampInput = document.querySelector('#timestamp-input');
 const timestampUnit = document.querySelector('#timestamp-unit');
@@ -41,6 +50,15 @@ const dateResults = {
 
 let clockTimer;
 const copyOperations = new WeakMap();
+let jsonStorage = null;
+try {
+  jsonStorage = globalThis.localStorage;
+} catch {
+  // Some browser privacy modes deny access before a Storage method can be called.
+}
+let jsonHistory = loadJsonHistory(jsonStorage);
+let jsonTreeAvailable = false;
+let jsonTreeVisible = false;
 
 function action(name) {
   return document.querySelector(`[data-action="${name}"]`);
@@ -73,14 +91,171 @@ function updateJsonCounters() {
   jsonOutputCount.textContent = `输出：${jsonOutput.value.length} 个字符`;
 }
 
+const JSON_OPERATIONS = {
+  format: {
+    run: () => formatJson(jsonInput.value, indentSelect.value),
+    success: 'JSON 格式正确，已完成格式化。',
+    label: '格式化',
+    tree: true
+  },
+  minify: {
+    run: () => minifyJson(jsonInput.value),
+    success: '已压缩为单行 JSON。',
+    label: '压缩',
+    tree: true
+  },
+  escape: {
+    run: () => escapeJsonText(jsonInput.value),
+    success: '文本已转换为 JSON 转义内容。',
+    label: '转义',
+    tree: false
+  },
+  unescape: {
+    run: () => unescapeJsonText(jsonInput.value),
+    success: 'JSON 转义内容已还原为文本。',
+    label: '去转义',
+    tree: false
+  }
+};
+
+function createTextElement(tagName, className, text) {
+  const element = document.createElement(tagName);
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
+
+function primitiveText(value) {
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (value === null) return 'null';
+  return String(value);
+}
+
+function treeNode(value, key, depth) {
+  const keyPrefix = key === null ? '' : `${JSON.stringify(String(key))}: `;
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value);
+    const type = Array.isArray(value) ? 'array' : 'object';
+    const details = document.createElement('details');
+    details.className = `json-tree-node json-tree-${type}`;
+    details.open = depth < 2;
+    const summary = document.createElement('summary');
+    summary.append(
+      createTextElement('span', 'json-tree-key', keyPrefix),
+      createTextElement('span', 'json-tree-bracket', type === 'array' ? '[' : '{'),
+      createTextElement('span', 'json-tree-count', `${entries.length} 项`),
+      createTextElement('span', 'json-tree-bracket', type === 'array' ? ']' : '}')
+    );
+    details.append(summary);
+    const children = document.createElement('div');
+    children.className = 'json-tree-children';
+    entries.forEach(([childKey, childValue]) => {
+      children.append(treeNode(childValue, childKey, depth + 1));
+    });
+    details.append(children);
+    return details;
+  }
+
+  const row = document.createElement('div');
+  const type = value === null ? 'null' : typeof value;
+  row.className = 'json-tree-value-row';
+  row.append(
+    createTextElement('span', 'json-tree-key', keyPrefix),
+    createTextElement('span', `json-tree-value json-tree-value-${type}`, primitiveText(value))
+  );
+  return row;
+}
+
+function setTreeMode(visible) {
+  jsonTreeVisible = Boolean(visible && jsonTreeAvailable);
+  jsonTree.hidden = !jsonTreeVisible;
+  jsonOutput.hidden = jsonTreeVisible;
+  action('toggle-json-tree').textContent = jsonTreeVisible ? '文本视图' : '树形视图';
+  action('expand-json-tree').disabled = !jsonTreeVisible;
+  action('collapse-json-tree').disabled = !jsonTreeVisible;
+}
+
+function resetJsonTree() {
+  jsonTree.replaceChildren();
+  jsonTreeAvailable = false;
+  action('toggle-json-tree').disabled = true;
+  setTreeMode(false);
+}
+
+function renderJsonTree(output) {
+  try {
+    jsonTree.replaceChildren(treeNode(JSON.parse(output), null, 0));
+    jsonTreeAvailable = true;
+    action('toggle-json-tree').disabled = false;
+    setTreeMode(false);
+  } catch {
+    resetJsonTree();
+  }
+}
+
+function formatHistoryTime(createdAt) {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return '刚刚';
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+function restoreHistoryEntry(entry) {
+  resetCopyFeedback(action('copy-json'));
+  jsonInput.value = entry.input;
+  jsonOutput.value = entry.output;
+  if (JSON_OPERATIONS[entry.operation]?.tree) renderJsonTree(entry.output);
+  else resetJsonTree();
+  setStatus(jsonStatus, 'success', `已恢复${JSON_OPERATIONS[entry.operation]?.label || ''}历史记录。`);
+  updateJsonCounters();
+  jsonInput.focus();
+}
+
+function renderJsonHistory() {
+  const items = jsonHistory.map(entry => {
+    const item = document.createElement('li');
+    item.className = 'json-history-item';
+    const meta = document.createElement('div');
+    meta.className = 'json-history-meta';
+    meta.append(
+      createTextElement('strong', '', JSON_OPERATIONS[entry.operation]?.label || entry.operation),
+      createTextElement('time', '', formatHistoryTime(entry.createdAt))
+    );
+    const preview = createTextElement('p', 'json-history-preview', entry.input.replace(/\s+/g, ' ').slice(0, 88));
+    const controls = document.createElement('div');
+    controls.className = 'json-history-actions';
+    const restore = createTextElement('button', '', '恢复');
+    restore.type = 'button';
+    restore.dataset.historyRestore = entry.id;
+    restore.addEventListener('click', () => restoreHistoryEntry(entry));
+    const remove = createTextElement('button', '', '删除');
+    remove.type = 'button';
+    remove.dataset.historyDelete = entry.id;
+    remove.addEventListener('click', () => {
+      jsonHistory = deleteJsonHistoryEntry(jsonStorage, entry.id);
+      renderJsonHistory();
+    });
+    controls.append(restore, remove);
+    item.append(meta, preview, controls);
+    return item;
+  });
+  jsonHistoryList.replaceChildren(...items);
+  jsonHistoryEmpty.hidden = jsonHistory.length > 0;
+}
+
 function runJson(mode) {
   resetCopyFeedback(action('copy-json'));
-  const result = mode === 'minify'
-    ? minifyJson(jsonInput.value)
-    : formatJson(jsonInput.value, indentSelect.value);
+  const operation = JSON_OPERATIONS[mode];
+  const input = jsonInput.value;
+  const result = operation.run();
 
   if (!result.ok) {
     jsonOutput.value = '';
+    resetJsonTree();
     const locationMessage = result.position === null ? '' : `（字符 ${result.position + 1}）`;
     setStatus(jsonStatus, 'error', `${result.error}${locationMessage}`);
     updateJsonCounters();
@@ -89,11 +264,15 @@ function runJson(mode) {
   }
 
   jsonOutput.value = result.output;
-  setStatus(
-    jsonStatus,
-    'success',
-    mode === 'minify' ? '已压缩为单行 JSON。' : 'JSON 格式正确，已完成格式化。'
-  );
+  if (operation.tree) renderJsonTree(result.output);
+  else resetJsonTree();
+  jsonHistory = saveJsonHistoryEntry(jsonStorage, {
+    operation: mode,
+    input,
+    output: result.output
+  });
+  renderJsonHistory();
+  setStatus(jsonStatus, 'success', operation.success);
   updateJsonCounters();
 }
 
@@ -292,17 +471,33 @@ action('example-json').addEventListener('click', () => {
   resetCopyFeedback(action('copy-json'));
   jsonInput.value = JSON.stringify(JSON_EXAMPLE);
   jsonOutput.value = '';
+  resetJsonTree();
   setStatus(jsonStatus, 'idle', '示例 JSON 已填入，可以开始处理。');
   updateJsonCounters();
   jsonInput.focus();
 });
 action('format-json').addEventListener('click', () => runJson('format'));
 action('minify-json').addEventListener('click', () => runJson('minify'));
+action('escape-json').addEventListener('click', () => runJson('escape'));
+action('unescape-json').addEventListener('click', () => runJson('unescape'));
 action('copy-json').addEventListener('click', event => copyText(jsonOutput.value, event.currentTarget, jsonStatus));
+action('toggle-json-tree').addEventListener('click', () => setTreeMode(!jsonTreeVisible));
+action('expand-json-tree').addEventListener('click', () => {
+  jsonTree.querySelectorAll('details').forEach(details => { details.open = true; });
+});
+action('collapse-json-tree').addEventListener('click', () => {
+  jsonTree.querySelectorAll('details').forEach(details => { details.open = false; });
+});
+action('clear-json-history').addEventListener('click', () => {
+  jsonHistory = clearJsonHistory(jsonStorage);
+  renderJsonHistory();
+  setStatus(jsonStatus, 'idle', 'JSON 历史已清空。');
+});
 action('clear-json').addEventListener('click', () => {
   resetCopyFeedback(action('copy-json'));
   jsonInput.value = '';
   jsonOutput.value = '';
+  resetJsonTree();
   setStatus(jsonStatus, 'idle', '输入 JSON 后选择操作。');
   updateJsonCounters();
   jsonInput.focus();
@@ -318,6 +513,8 @@ action('copy-timestamp').addEventListener('click', event => {
 action('clear-timestamp').addEventListener('click', clearTimestampTool);
 
 localZone.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
+resetJsonTree();
+renderJsonHistory();
 updateJsonCounters();
 renderRoute();
 syncClock();
