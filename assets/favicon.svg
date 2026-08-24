@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">DevKit 终端图标</title>
+  <rect width="64" height="64" rx="14" fill="#101815"/>
+  <path d="m15 20 13 12-13 12M33 45h16" fill="none" stroke="#b8ff4a" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/>
+</svg>
