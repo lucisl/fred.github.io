@@ -4,6 +4,57 @@ const RELATIVE_UNITS = [
 ];
 
 const failure = error => ({ ok: false, error });
+const DATE_PART_KEYS = ['year', 'month', 'day', 'hour', 'minute', 'second'];
+
+function partsToUtcMilliseconds({ year, month, day, hour, minute, second }) {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hour, minute, second, 0);
+  return date.getTime();
+}
+
+function sameDateParts(left, right) {
+  return DATE_PART_KEYS.every(key => left[key] === right[key]);
+}
+
+export function isValidTimeZone(zone) {
+  if (typeof zone !== 'string' || zone.length === 0) return false;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: zone }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function datePartsInZone(milliseconds, zone) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: zone,
+    numberingSystem: 'latn',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  });
+  const values = {};
+  for (const { type, value } of formatter.formatToParts(new Date(milliseconds))) {
+    if (DATE_PART_KEYS.includes(type)) {
+      values[type] = Number(value);
+    }
+  }
+  return values;
+}
+
+export function formatDateInZone(milliseconds, zone) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    dateStyle: 'full',
+    timeStyle: 'medium',
+    timeZone: zone
+  }).format(new Date(milliseconds));
+}
 
 export function normalizeTimestamp(source, unit = 'auto') {
   const text = source.trim();
@@ -33,17 +84,25 @@ export function formatRelative(targetMs, nowMs = Date.now()) {
   return '现在';
 }
 
-export function timestampToRepresentations(source, unit = 'auto', nowMs = Date.now()) {
+export function timestampToRepresentations(source, unit = 'auto', nowMs = Date.now(), zone = 'local') {
   const normalized = normalizeTimestamp(source, unit);
   if (!normalized.ok) return normalized;
+  if (!['local', 'utc'].includes(zone) && !isValidTimeZone(zone)) {
+    return failure('时区不存在，请检查选择。');
+  }
 
   const date = new Date(normalized.milliseconds);
+  const local = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'full', timeStyle: 'medium' }).format(date);
   return {
     ...normalized,
-    local: new Intl.DateTimeFormat('zh-CN', { dateStyle: 'full', timeStyle: 'medium' }).format(date),
+    local,
     utc: date.toUTCString(),
     iso: date.toISOString(),
-    relative: formatRelative(normalized.milliseconds, nowMs)
+    relative: formatRelative(normalized.milliseconds, nowMs),
+    zoned: zone === 'local'
+      ? local
+      : formatDateInZone(normalized.milliseconds, zone === 'utc' ? 'UTC' : zone),
+    timeZone: zone
   };
 }
 
@@ -55,6 +114,36 @@ export function dateTimeToTimestamps(datePart, timePart, zone = 'local') {
   const [year, month, day] = dateMatch.slice(1).map(Number);
   const [hour, minute, second = 0] = timeMatch.slice(1).map(Number);
   if (year < 1) return failure('日期或时间不存在，请检查输入。');
+
+  if (!['local', 'utc'].includes(zone)) {
+    if (!isValidTimeZone(zone)) return failure('时区不存在，请检查选择。');
+
+    const requested = { year, month, day, hour, minute, second };
+    const wallMilliseconds = partsToUtcMilliseconds(requested);
+    if (!Number.isFinite(wallMilliseconds)) {
+      return failure('日期或时间不存在，请检查输入。');
+    }
+
+    let milliseconds = wallMilliseconds;
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const representedAsUtc = partsToUtcMilliseconds(datePartsInZone(milliseconds, zone));
+      const next = milliseconds + wallMilliseconds - representedAsUtc;
+      if (next === milliseconds) break;
+      milliseconds = next;
+    }
+
+    if (!Number.isFinite(milliseconds) || !sameDateParts(datePartsInZone(milliseconds, zone), requested)) {
+      return failure('日期或时间不存在，请检查输入。');
+    }
+
+    const zonedDate = new Date(milliseconds);
+    return {
+      ok: true,
+      seconds: Math.floor(milliseconds / 1000),
+      milliseconds,
+      iso: zonedDate.toISOString()
+    };
+  }
 
   const check = new Date(0);
   if (zone === 'utc') {
