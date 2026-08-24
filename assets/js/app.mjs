@@ -74,6 +74,7 @@ function updateJsonCounters() {
 }
 
 function runJson(mode) {
+  resetCopyFeedback(action('copy-json'));
   const result = mode === 'minify'
     ? minifyJson(jsonInput.value)
     : formatJson(jsonInput.value, indentSelect.value);
@@ -110,6 +111,7 @@ function renderTimestampError(message) {
 }
 
 function convertTimestamp() {
+  resetCopyFeedback(action('copy-timestamp'));
   const result = timestampToRepresentations(timestampInput.value, timestampUnit.value);
   if (!result.ok) {
     renderTimestampError(result.error);
@@ -135,6 +137,7 @@ function renderDateError(message) {
 }
 
 function convertDate() {
+  resetCopyFeedback(action('copy-timestamp'));
   const result = dateTimeToTimestamps(dateInput.value, timeInput.value, selectedZone());
   if (!result.ok) {
     renderDateError(result.error);
@@ -152,6 +155,7 @@ function pad(value) {
 }
 
 function useCurrentTime() {
+  resetCopyFeedback(action('copy-timestamp'));
   const now = new Date();
   const milliseconds = now.getTime();
   const unit = timestampUnit.value;
@@ -285,6 +289,7 @@ document.addEventListener('visibilitychange', syncClock);
 jsonInput.addEventListener('input', updateJsonCounters);
 
 action('example-json').addEventListener('click', () => {
+  resetCopyFeedback(action('copy-json'));
   jsonInput.value = JSON.stringify(JSON_EXAMPLE);
   jsonOutput.value = '';
   setStatus(jsonStatus, 'idle', '示例 JSON 已填入，可以开始处理。');

@@ -5,6 +5,8 @@ import { normalizeToolHash } from '../assets/js/router-core.mjs';
 test('accepts the two known tools', () => {
   assert.equal(normalizeToolHash('#json'), 'json');
   assert.equal(normalizeToolHash('#timestamp'), 'timestamp');
+  assert.equal(normalizeToolHash('#JSON'), 'json');
+  assert.equal(normalizeToolHash('#TIMESTAMP'), 'timestamp');
 });
 
 test('falls back to JSON for empty or unknown hashes', () => {

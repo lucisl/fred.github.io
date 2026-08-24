@@ -49,6 +49,36 @@ test('strictly round-trips local date fields and rejects local rollover dates', 
   assert.equal(dateTimeToTimestamps('2026-02-30', '12:00:00', 'local').ok, false);
 });
 
+test('preserves year 0099 in UTC and local date conversions', () => {
+  const utc = dateTimeToTimestamps('0099-01-02', '03:04:05', 'utc');
+  assert.deepEqual(utc, {
+    ok: true,
+    seconds: -59042897755,
+    milliseconds: -59042897755000,
+    iso: '0099-01-02T03:04:05.000Z'
+  });
+
+  const local = dateTimeToTimestamps('0099-01-02', '03:04:05', 'local');
+  assert.equal(local.ok, true);
+  const localDate = new Date(local.milliseconds);
+  assert.deepEqual([
+    localDate.getFullYear(), localDate.getMonth() + 1, localDate.getDate(),
+    localDate.getHours(), localDate.getMinutes(), localDate.getSeconds()
+  ], [99, 1, 2, 3, 4, 5]);
+});
+
+test('accepts valid five-digit years and rejects invalid or out-of-range extended years', () => {
+  assert.deepEqual(dateTimeToTimestamps('10000-01-02', '03:04:05', 'utc'), {
+    ok: true,
+    seconds: 253402398245,
+    milliseconds: 253402398245000,
+    iso: '+010000-01-02T03:04:05.000Z'
+  });
+  assert.equal(dateTimeToTimestamps('10000-02-30', '03:04:05', 'utc').ok, false);
+  assert.equal(dateTimeToTimestamps('0000-01-01', '00:00:00', 'utc').ok, false);
+  assert.equal(dateTimeToTimestamps('99999999999999999999-01-01', '00:00:00', 'utc').ok, false);
+});
+
 test('formats past and future relative values', () => {
   assert.equal(formatRelative(60_000, 0), '1 分钟后');
   assert.equal(formatRelative(-7_200_000, 0), '2 小时前');

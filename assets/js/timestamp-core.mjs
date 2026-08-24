@@ -48,16 +48,23 @@ export function timestampToRepresentations(source, unit = 'auto', nowMs = Date.n
 }
 
 export function dateTimeToTimestamps(datePart, timePart, zone = 'local') {
-  const dateMatch = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const dateMatch = datePart.match(/^(\d{4,})-(\d{2})-(\d{2})$/);
   const timeMatch = timePart.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
   if (!dateMatch || !timeMatch) return failure('请选择完整且有效的日期与时间。');
 
   const [year, month, day] = dateMatch.slice(1).map(Number);
   const [hour, minute, second = 0] = timeMatch.slice(1).map(Number);
-  const milliseconds = zone === 'utc'
-    ? Date.UTC(year, month - 1, day, hour, minute, second)
-    : new Date(year, month - 1, day, hour, minute, second).getTime();
-  const check = new Date(milliseconds);
+  if (year < 1) return failure('日期或时间不存在，请检查输入。');
+
+  const check = new Date(0);
+  if (zone === 'utc') {
+    check.setUTCFullYear(year, month - 1, day);
+    check.setUTCHours(hour, minute, second, 0);
+  } else {
+    check.setFullYear(year, month - 1, day);
+    check.setHours(hour, minute, second, 0);
+  }
+  const milliseconds = check.getTime();
   const parts = zone === 'utc'
     ? [check.getUTCFullYear(), check.getUTCMonth() + 1, check.getUTCDate(), check.getUTCHours(), check.getUTCMinutes(), check.getUTCSeconds()]
     : [check.getFullYear(), check.getMonth() + 1, check.getDate(), check.getHours(), check.getMinutes(), check.getSeconds()];
