@@ -28,6 +28,7 @@ test('build script creates a deployable artifact without development files', asy
     'assets/favicon.svg',
     'assets/js/app.mjs',
     'assets/js/json-core.mjs',
+    'assets/js/json-history.mjs',
     'assets/js/router-core.mjs',
     'assets/js/timestamp-core.mjs',
     'assets/styles.css',

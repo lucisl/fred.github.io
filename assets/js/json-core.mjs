@@ -19,3 +19,24 @@ export const formatJson = (source, indent = 2) =>
   transformJson(source, indent === 'tab' ? '\t' : Number(indent));
 
 export const minifyJson = source => transformJson(source, 0);
+
+export function escapeJsonText(source) {
+  return { ok: true, output: JSON.stringify(source).slice(1, -1) };
+}
+
+export function unescapeJsonText(source) {
+  const hasOuterQuotes = source.startsWith('"') || source.endsWith('"');
+  const jsonString = hasOuterQuotes ? source : `"${source}"`;
+
+  try {
+    const output = JSON.parse(jsonString);
+    if (typeof output !== 'string') throw new TypeError('expected string');
+    return { ok: true, output };
+  } catch {
+    return {
+      ok: false,
+      error: 'JSON 转义解析失败：无效的转义内容。',
+      position: null
+    };
+  }
+}
