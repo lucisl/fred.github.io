@@ -5,6 +5,7 @@ const RELATIVE_UNITS = [
 
 const failure = error => ({ ok: false, error });
 const DATE_PART_KEYS = ['year', 'month', 'day', 'hour', 'minute', 'second'];
+const OFFSET_SAMPLE_DELTAS = [-172_800_000, -86_400_000, 0, 86_400_000, 172_800_000];
 
 function partsToUtcMilliseconds({ year, month, day, hour, minute, second }) {
   const date = new Date(0);
@@ -124,15 +125,22 @@ export function dateTimeToTimestamps(datePart, timePart, zone = 'local') {
       return failure('日期或时间不存在，请检查输入。');
     }
 
-    let milliseconds = wallMilliseconds;
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      const representedAsUtc = partsToUtcMilliseconds(datePartsInZone(milliseconds, zone));
-      const next = milliseconds + wallMilliseconds - representedAsUtc;
-      if (next === milliseconds) break;
-      milliseconds = next;
+    const offsets = new Set();
+    for (const delta of OFFSET_SAMPLE_DELTAS) {
+      const sample = wallMilliseconds + delta;
+      if (Number.isNaN(new Date(sample).getTime())) continue;
+      offsets.add(partsToUtcMilliseconds(datePartsInZone(sample, zone)) - sample);
     }
+    const candidates = [...offsets]
+      .map(offset => wallMilliseconds - offset)
+      .filter(milliseconds => (
+        !Number.isNaN(new Date(milliseconds).getTime())
+        && sameDateParts(datePartsInZone(milliseconds, zone), requested)
+      ))
+      .sort((left, right) => left - right);
+    const milliseconds = candidates[0];
 
-    if (!Number.isFinite(milliseconds) || !sameDateParts(datePartsInZone(milliseconds, zone), requested)) {
+    if (milliseconds === undefined) {
       return failure('日期或时间不存在，请检查输入。');
     }
 

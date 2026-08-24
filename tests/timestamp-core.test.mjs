@@ -109,6 +109,27 @@ test('chooses the first occurrence of a repeated New York wall time', () => {
   );
 });
 
+test('chooses the first occurrence of a repeated London wall time', () => {
+  assert.equal(
+    dateTimeToTimestamps('2024-10-27', '01:30:00', 'Europe/London').milliseconds,
+    1729989000000
+  );
+});
+
+test('chooses the first occurrence of a repeated Sydney wall time', () => {
+  assert.equal(
+    dateTimeToTimestamps('2024-04-07', '02:30:00', 'Australia/Sydney').milliseconds,
+    1712417400000
+  );
+});
+
+test('chooses the first occurrence of Lord Howe half-hour fallback', () => {
+  assert.equal(
+    dateTimeToTimestamps('2024-04-07', '01:45:00', 'Australia/Lord_Howe').milliseconds,
+    1712414700000
+  );
+});
+
 test('converts UTC date fields to seconds and milliseconds', () => {
   assert.deepEqual(dateTimeToTimestamps('1970-01-01', '00:00:01', 'utc'), {
     ok: true,
