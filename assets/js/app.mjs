@@ -14,6 +14,10 @@ const JSON_EXAMPLE = {
   功能: ['JSON 格式化', '时间戳转换'],
   维护者: { 姓名: '小林', 城市: '上海' }
 };
+const SIDEBAR_STORAGE_KEY = 'devkit.sidebar.collapsed.v1';
+
+const appShell = document.querySelector('#app-shell');
+const sidebarToggle = document.querySelector('[data-action="toggle-sidebar"]');
 
 const jsonInput = document.querySelector('#json-input');
 const jsonOutput = document.querySelector('#json-output');
@@ -65,6 +69,30 @@ let jsonTreeVisible = false;
 
 function action(name) {
   return document.querySelector(`[data-action="${name}"]`);
+}
+
+function loadSidebarCollapsed() {
+  try {
+    return jsonStorage?.getItem(SIDEBAR_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function setSidebarCollapsed(collapsed, persist = false) {
+  const next = Boolean(collapsed);
+  const label = next ? '展开侧边栏' : '收起侧边栏';
+  appShell.dataset.sidebarCollapsed = String(next);
+  sidebarToggle.setAttribute('aria-expanded', String(!next));
+  sidebarToggle.setAttribute('aria-label', label);
+  sidebarToggle.setAttribute('title', label);
+
+  if (!persist) return;
+  try {
+    jsonStorage?.setItem(SIDEBAR_STORAGE_KEY, String(next));
+  } catch {
+    // Collapsing remains usable when browser storage is unavailable.
+  }
 }
 
 function setStatus(target, state, message) {
@@ -498,6 +526,9 @@ function syncClock() {
 window.addEventListener('hashchange', renderRoute);
 document.addEventListener('visibilitychange', syncClock);
 jsonInput.addEventListener('input', updateJsonCounters);
+sidebarToggle.addEventListener('click', () => {
+  setSidebarCollapsed(appShell.dataset.sidebarCollapsed !== 'true', true);
+});
 
 action('example-json').addEventListener('click', () => {
   resetCopyFeedback(action('copy-json'));
@@ -546,6 +577,7 @@ action('copy-timestamp').addEventListener('click', event => {
 action('clear-timestamp').addEventListener('click', clearTimestampTool);
 
 localZone.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
+setSidebarCollapsed(loadSidebarCollapsed());
 resetJsonTree();
 renderJsonHistory();
 updateJsonCounters();

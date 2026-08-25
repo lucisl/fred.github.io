@@ -165,6 +165,7 @@ function createHarness() {
   };
 
   for (const id of [
+    'app-shell',
     'json-input', 'json-output', 'json-input-count', 'json-output-count', 'json-status',
     'json-tree', 'json-history-list', 'json-history-empty',
     'timestamp-input', 'timestamp-error', 'date-input', 'time-input', 'date-error',
@@ -183,6 +184,7 @@ function createHarness() {
     ['unescape-json', '去除转义'], ['copy-json', '复制处理结果'],
     ['toggle-json-tree', '树形视图'], ['expand-json-tree', '全部展开'],
     ['collapse-json-tree', '全部收起'], ['clear-json-history', '清空历史'],
+    ['toggle-sidebar', '收起侧边栏'],
     ['clear-json', '清空 JSON 内容'], ['convert-timestamp', '转换时间戳'],
     ['convert-date', '转换为时间戳'], ['current-time', '使用当前时间'],
     ['copy-timestamp', '复制时间戳结果'], ['clear-timestamp', '清空时间戳内容']
@@ -221,6 +223,27 @@ Object.defineProperties(globalThis, {
 });
 
 await import(`../assets/js/app.mjs?copy-race=${Date.now()}`);
+
+test('sidebar toggle releases workspace width and persists the desktop preference', async () => {
+  const { actions, elements } = harness;
+  const shell = elements.get('app-shell');
+  const toggle = actions.get('toggle-sidebar');
+
+  assert.equal(shell.dataset.sidebarCollapsed, 'false');
+  assert.equal(toggle.attributes.get('aria-expanded'), 'true');
+  assert.equal(toggle.attributes.get('aria-label'), '收起侧边栏');
+
+  await toggle.dispatch('click');
+  assert.equal(shell.dataset.sidebarCollapsed, 'true');
+  assert.equal(toggle.attributes.get('aria-expanded'), 'false');
+  assert.equal(toggle.attributes.get('aria-label'), '展开侧边栏');
+  assert.equal(localStorage.getItem('devkit.sidebar.collapsed.v1'), 'true');
+
+  await toggle.dispatch('click');
+  assert.equal(shell.dataset.sidebarCollapsed, 'false');
+  assert.equal(toggle.attributes.get('aria-expanded'), 'true');
+  assert.equal(localStorage.getItem('devkit.sidebar.collapsed.v1'), 'false');
+});
 
 test('selected IANA zone drives timestamp output, date conversion, copy, and survives clear or route changes', async () => {
   const { actions, elements, window } = harness;

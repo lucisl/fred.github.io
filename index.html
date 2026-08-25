@@ -19,16 +19,21 @@
   </head>
   <body>
     <a class="skip-link" href="#main-content">跳到主要内容</a>
-    <div class="app-shell">
+    <div id="app-shell" class="app-shell" data-sidebar-collapsed="false">
       <aside class="sidebar" aria-label="工具导航">
-        <a class="brand" href="#json" aria-label="DevKit 首页">
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24"><path d="m5 7 5 5-5 5M12 17h7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
-          <span>DevKit</span>
-        </a>
-        <nav class="tool-nav" aria-label="开发工具">
+        <div class="sidebar-header">
+          <a class="brand" href="#json" aria-label="DevKit 首页">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24"><path d="m5 7 5 5-5 5M12 17h7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+            <span>DevKit</span>
+          </a>
+          <button class="sidebar-toggle" type="button" data-action="toggle-sidebar" aria-controls="sidebar-navigation" aria-expanded="true" aria-label="收起侧边栏" title="收起侧边栏">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m14 7-5 5 5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+          </button>
+        </div>
+        <nav id="sidebar-navigation" class="tool-nav" aria-label="开发工具">
           <ul>
-            <li><a data-tool-link="json" href="#json" aria-current="page">JSON 格式化</a></li>
-            <li><a data-tool-link="timestamp" href="#timestamp">时间戳转换</a></li>
+            <li><a data-tool-link="json" href="#json" aria-current="page" aria-label="JSON 格式化" title="JSON 格式化"><span>JSON 格式化</span></a></li>
+            <li><a data-tool-link="timestamp" href="#timestamp" aria-label="时间戳转换" title="时间戳转换"><span>时间戳转换</span></a></li>
           </ul>
         </nav>
         <p class="privacy-note">所有处理都在本地完成；JSON 历史仅保存在当前浏览器，不会上传。</p>

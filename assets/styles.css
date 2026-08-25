@@ -125,6 +125,14 @@ textarea:disabled {
   box-shadow: var(--shadow-frame);
 }
 
+.sidebar-header {
+  display: contents;
+}
+
+.sidebar-toggle {
+  display: none;
+}
+
 .sidebar {
   position: relative;
   display: flex;
@@ -251,6 +259,87 @@ textarea:disabled {
   font-weight: 600;
   letter-spacing: .08em;
   text-transform: uppercase;
+}
+
+@media (min-width: 961px) {
+  .app-shell {
+    transition: grid-template-columns 180ms ease;
+  }
+
+  .app-shell[data-sidebar-collapsed="true"] {
+    grid-template-columns: 82px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    transition: padding 180ms ease;
+  }
+
+  .sidebar-header {
+    display: flex;
+    margin-bottom: 58px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .sidebar-header .brand {
+    margin-bottom: 0;
+  }
+
+  .sidebar-toggle {
+    display: inline-grid;
+    width: 38px;
+    min-height: 38px;
+    padding: 8px;
+    flex: 0 0 38px;
+    place-items: center;
+    border-color: var(--line-dark);
+    color: var(--lime);
+    background: rgba(255, 255, 255, .04);
+    box-shadow: none;
+  }
+
+  .sidebar-toggle svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 180ms ease;
+  }
+
+  .sidebar-toggle:hover:not(:disabled) {
+    border-color: rgba(184, 243, 74, .65);
+    background: rgba(184, 243, 74, .08);
+    box-shadow: none;
+  }
+
+  .app-shell[data-sidebar-collapsed="true"] .sidebar {
+    padding-inline: 14px;
+  }
+
+  .app-shell[data-sidebar-collapsed="true"] .sidebar-header {
+    flex-direction: column;
+  }
+
+  .app-shell[data-sidebar-collapsed="true"] .brand span,
+  .app-shell[data-sidebar-collapsed="true"] .tool-nav a > span,
+  .app-shell[data-sidebar-collapsed="true"] .privacy-note,
+  .app-shell[data-sidebar-collapsed="true"] .sidebar footer {
+    display: none;
+  }
+
+  .app-shell[data-sidebar-collapsed="true"] .tool-nav a {
+    padding-inline: 4px;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 0;
+  }
+
+  .app-shell[data-sidebar-collapsed="true"] .tool-nav a:hover {
+    transform: none;
+  }
+
+  .app-shell[data-sidebar-collapsed="true"] .sidebar-toggle svg {
+    transform: rotate(180deg);
+  }
 }
 
 .workspace {
